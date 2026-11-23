@@ -1,0 +1,42 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function ownsAccount(userId) {
+      return request.auth != null && request.auth.uid == userId;
+    }
+
+    match /users/{userId} {
+      allow read, delete: if ownsAccount(userId);
+      allow create, update: if ownsAccount(userId)
+        && request.resource.data.keys().hasOnly(['name', 'email', 'course'])
+        && request.resource.data.name is string
+        && request.resource.data.name.size() >= 2
+        && request.resource.data.email == request.auth.token.email
+        && request.resource.data.course is string;
+
+      match /subjects/{subjectId} {
+        allow read, delete: if ownsAccount(userId);
+        allow create, update: if ownsAccount(userId)
+          && request.resource.data.keys().hasOnly(['name', 'teacher'])
+          && request.resource.data.name is string
+          && request.resource.data.name.size() > 0
+          && request.resource.data.teacher is string;
+      }
+
+      match /tasks/{taskId} {
+        allow read, delete: if ownsAccount(userId);
+        allow create, update: if ownsAccount(userId)
+          && request.resource.data.keys().hasOnly(['title', 'subjectId', 'description', 'dueDay', 'type', 'completed'])
+          && request.resource.data.title is string
+          && request.resource.data.title.size() > 0
+          && request.resource.data.subjectId is string
+          && request.resource.data.description is string
+          && request.resource.data.dueDay is int
+          && request.resource.data.dueDay >= 0
+          && request.resource.data.dueDay <= 2932896
+          && request.resource.data.type in ['Trabalho', 'Prova', 'Exercício', 'Leitura']
+          && request.resource.data.completed is bool;
+      }
+    }
+  }
+}
